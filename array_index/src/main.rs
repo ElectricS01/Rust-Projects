@@ -16,6 +16,11 @@ fn main() {
         .parse()
         .expect("Index entered was not a number");
 
+    if a.len() >= index {
+        println!("The index {index} is greater than the length of the array");
+        return
+    }
+
     let element = a[index];
 
     println!("The value of the element at index {index} is: {element}");
