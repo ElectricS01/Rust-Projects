@@ -32,12 +32,8 @@ fn main() {
             println!("The enemy chose scissors, you loose");
         } else if guess == "scissors" && enemy == "rock" {
             println!("The enemy chose rock, you loose");
-        } else if guess == "paper" && enemy == "rock" {
-            println!("The enemy chose rock, you win");
-        } else if guess == "scissors" && enemy == "paper" {
-            println!("The enemy chose paper, you wim");
-        } else if guess == "rock" && enemy == "scissors" {
-            println!("The enemy chose scissors, you win");
+        } else {
+            println!("The enemy chose {enemy}, you win");
         }
     }
 }
