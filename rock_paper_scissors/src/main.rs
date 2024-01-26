@@ -1,5 +1,5 @@
 use rand::Rng;
-use std::io;
+use std::{io, thread, time};
 
 fn main() {
     const GUESSES: [&str; 3] = ["rock", "paper", "scissors"];
@@ -19,10 +19,23 @@ fn main() {
 
         let guess = guess.trim();
 
+        if guess == "exit" {
+            break
+        }
+
         if !GUESSES.contains(&guess) {
             println!("Guess not valid");
             continue
         }
+
+        let hundred_millis = time::Duration::from_millis(500);   
+        println!("Rock!");
+        thread::sleep(hundred_millis);
+        println!("Paper!");
+        thread::sleep(hundred_millis);
+        println!("Scissors!");
+        thread::sleep(hundred_millis);
+        println!("Shoot!");
 
         if enemy == guess {
             println!("Draw, try again");
