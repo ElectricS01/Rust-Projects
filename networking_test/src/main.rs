@@ -7,6 +7,7 @@ use axum::{
 use dotenv::dotenv;
 use sqlx::types::chrono::{self, DateTime};
 use sqlx::{Error, FromRow, MySql, MySqlPool, Pool};
+use std::process::exit;
 use std::sync::{Arc, Mutex};
 
 #[derive(FromRow)]
@@ -42,12 +43,14 @@ async fn connect() -> Result<Pool<MySql>, Error> {
     .await;
 }
 
-async fn do_run_query() {
+async fn do_run_query() -> Result<Vec<Message>, String> {
     let result = task::block_on(connect());
 
     match result {
         Err(err) => {
             println!("Cannot connect to database [{}]", err.to_string());
+            exit(1);
+            // return Err("Cannot query database".to_owned());
         }
 
         Ok(pool) => {
@@ -73,52 +76,64 @@ async fn do_run_query() {
                 );
             }
 
-            //            return query_result[0];
+            return Ok(query_result);
         }
     }
 }
 
 #[tokio::main]
 async fn main() {
-    task::block_on(do_run_query());
+    let result = task::block_on(do_run_query());
 
-    let request_count = Arc::new(Mutex::new(0));
+    match result {
+        Err(err) => {
+            println!("Cannot connect to database [{}]", err.to_string());
+            exit(1);
+        }
 
-    let app = Router::new()
-        .route(
-            "/",
-            get({
-                let request_count = Arc::clone(&request_count);
-                move || async move {
-                    let mut request_count = request_count.lock().unwrap();
-                    *request_count += 1;
-                    Html(format!(
-                        r#"<h1>Welcome to TPUv6/TPUvRust</h1>
+        Ok(res) => {
+            let request_count = Arc::new(Mutex::new(0));
+            let mes = res[0].messageContents.clone();
+
+            let app = Router::new()
+                .route(
+                    "/",
+                    get({
+                        let request_count = Arc::clone(&request_count);
+                        move || async move {
+                            let mut request_count = request_count.lock().unwrap();
+                            let mes = mes.clone();
+                            *request_count += 1;
+                            Html(format!(
+                                r#"<h1>Welcome to TPUv6/TPUvRust</h1>
                         <p>Way better than TPUv5</p>
                         <p>Request count: {}</p>
+                        <p>{}</p>
                         <form action="/request" method="post">
                             <button name="foo" value="upvote">Upvote</button>
                         </form>"#,
-                        *request_count
-                    ))
-                }
-            }),
-        )
-        .route(
-            "/request",
-            post({
-                let request_count = Arc::clone(&request_count);
-                move || {
-                    let request_count = Arc::clone(&request_count);
-                    async move {
-                        let mut request_count = request_count.lock().unwrap();
-                        *request_count += 1;
-                        Html(format!("{}", *request_count))
-                    }
-                }
-            }),
-        );
+                                *request_count, mes
+                            ))
+                        }
+                    }),
+                )
+                .route(
+                    "/request",
+                    post({
+                        let request_count = Arc::clone(&request_count);
+                        move || {
+                            let request_count = Arc::clone(&request_count);
+                            async move {
+                                let mut request_count = request_count.lock().unwrap();
+                                *request_count += 1;
+                                Html(format!("{}", *request_count))
+                            }
+                        }
+                    }),
+                );
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+            let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+            axum::serve(listener, app).await.unwrap();
+        }
+    }
 }
